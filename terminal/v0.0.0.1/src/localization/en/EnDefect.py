@@ -1,0 +1,1 @@
+Defect: dict = {0: "Wheel has no defects", 1: "Wheel has a defect"}

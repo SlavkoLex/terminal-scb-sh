@@ -1,0 +1,4 @@
+minimalmodbus==2.1.1
+pyserial==3.5
+requests==2.31.0
+termcolor==2.5.0
