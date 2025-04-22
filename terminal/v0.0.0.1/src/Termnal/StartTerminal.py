@@ -32,29 +32,29 @@ def startTerminal(trainInfoLocal: dict, terminalLocal: dict, months: dict, genPh
 
     confsMbs.read(confFile)
 
-    # try:
-    #     mbsSlave = PollMbsSlave(
-    #         infoMbsDevice["portPath"], 
-    #         int(infoMbsDevice["addressSlave"]), 
-    #         int(confsMbs["PortConfig"]["BAUDRATE"]), 
-    #         int(confsMbs["PortConfig"]["COUNT_BITS"]), 
-    #         confsMbs["PortConfig"]["PARITY_BIT"], 
-    #         int(confsMbs["PortConfig"]["STOP_BIT"]),
-    #         float(confsMbs["PortConfig"]["TIMEOUT"])
-    #     )
-    # except Exception:
-    #     print(colored(f"\n!!! {exMess["PortAdrrErr"]} !!!\n", "red", attrs=["bold"]))
-    #     raise SystemExit(1)
+    try:
+        mbsSlave = PollMbsSlave(
+            infoMbsDevice["portPath"], 
+            int(infoMbsDevice["addressSlave"]), 
+            int(confsMbs["PortConfig"]["BAUDRATE"]), 
+            int(confsMbs["PortConfig"]["COUNT_BITS"]), 
+            confsMbs["PortConfig"]["PARITY_BIT"], 
+            int(confsMbs["PortConfig"]["STOP_BIT"]),
+            float(confsMbs["PortConfig"]["TIMEOUT"])
+        )
+    except Exception:
+        print(colored(f"\n!!! {exMess["PortAdrrErr"]} !!!\n", "red", attrs=["bold"]))
+        raise SystemExit(1)
     
 
 # Auto time correction for "SCB-Sh device"
     print(colored(f"\n{genPhrases["TimeAdjust"]}\n", "white", attrs=["bold"]))
     newDateTime: list[int] =  DateTimeForSCBSh().getDateTime()
 
-    # try:
-    #     mbsSlave.adjustTime(newDateTime)
-    # except Exception:
-    #     print(colored(f"\n!!! {exMess["BadRequest"]} !!!\n", "red", attrs=["bold"]))
+    try:
+        mbsSlave.adjustTime(newDateTime)
+    except Exception:
+        print(colored(f"\n!!! {exMess["BadRequest"]} !!!\n", "red", attrs=["bold"]))
 
 # Checking the Internet connection
     if not (checkNetConnect()):
@@ -82,17 +82,15 @@ def startTerminal(trainInfoLocal: dict, terminalLocal: dict, months: dict, genPh
 
 # Append data in list for defect determination operation
         try:
-            # deviceADCdata: list[int] = mbsSlave.getADCData()
-            # statusChecker: int = parasiticConversionChecker(deviceADCdata)
+            deviceADCdata: list[int] = mbsSlave.getADCData()
+            statusChecker: int = parasiticConversionChecker(deviceADCdata)
 
-            # if(statusChecker == 1):
-            #     sortedList.append(deviceADCdata)
+            if(statusChecker == 1):
+                sortedList.append(deviceADCdata)
 
-            # elif(statusChecker != 1):
+            elif(statusChecker != 1):
 
-                # generatedData: list[int] = mbsSlave.getGeneratedData()
-
-                generatedData: list[int] = [2025, 2, 19, 9, 30, 46, 2, 2, 124]
+                generatedData: list[int] = mbsSlave.getGeneratedData()
             
                 if(generatedData != dataSCBbuffer):
 
