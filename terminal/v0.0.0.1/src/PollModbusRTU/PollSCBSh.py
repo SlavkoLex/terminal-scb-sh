@@ -1,4 +1,5 @@
 import minimalmodbus
+import time
 
 from typing import Union
 
@@ -101,5 +102,18 @@ class PollMbsSlave:
             newDateTime.append(startAdjust)
 
             self.__mbsPort.write_registers(frstRgstrAT, newDateTime)
+    
+    
+    def noComminicationHandler(self):
+        while(True):
+            exFlag: int = 0
 
-        
+            try:
+                self.getDateTime()
+            except Exception:
+                exFlag = 1
+                time.sleep(0.5)
+
+            if(exFlag == 0):
+                break
+

@@ -1,8 +1,9 @@
 from PollModbusRTU.PollSCBSh import PollMbsSlave
 from Termnal.TerminalInit import terminalInit
-from DataSave.JSONworker import JSONworker
+from DataSave.JSONworkerForData import JSONworker
 from AdjustSCBSh.DateTimeForSCBSh import DateTimeForSCBSh
 from NetConnection.CheckNetConnect import checkNetConnect
+from ErrrorDeviceLog.JSONErrorLogWorker import JsonErrorLogWorker
 
 # Determining the wheel defect
 from SignalProcessing.DefectAnalysis import DefectAnalysis
@@ -11,10 +12,15 @@ from SignalProcessing.ParasiticVibrationFilter import parasiticConversionChecker
 import configparser
 from pathlib import Path
 from termcolor import colored
+from datetime import datetime
 import os.path
 
 
 def startTerminal(trainInfoLocal: dict, terminalLocal: dict, months: dict, genPhrases: dict, defectInfo: dict, exMess: dict):
+
+# Create Mbs Error Logger object
+
+    errorMbsWarkerLogger: JsonErrorLogWorker = JsonErrorLogWorker()
 
 # Connect to SCB-Sh
 
@@ -49,12 +55,34 @@ def startTerminal(trainInfoLocal: dict, terminalLocal: dict, months: dict, genPh
 
 # Auto time correction for "SCB-Sh device"
     print(colored(f"\n{genPhrases["TimeAdjust"]}\n", "white", attrs=["bold"]))
-    newDateTime: list[int] =  DateTimeForSCBSh().getDateTime()
+
+    newDateTime: list[int]  =  DateTimeForSCBSh().getDateTime()
 
     try:
         mbsSlave.adjustTime(newDateTime)
     except Exception:
-        print(colored(f"\n!!! {exMess["BadRequest"]} !!!\n", "red", attrs=["bold"]))
+
+        print(colored(f"\n!!! {exMess["CommunicationErr"]} !!!\n", "red", attrs=["bold"]))
+
+        # Record information in an ErrLogJSON.json file
+        if errorMbsWarkerLogger.readeJSONfile() == None:
+            errorMbsWarkerLogger.writeErrBuffer(str(datetime.now()), "The device is not responding", "No Communication Error while adjusting time")
+            errorMbsWarkerLogger.wtireErrLogJson() 
+            errorMbsWarkerLogger.clearErrBuffer()
+        else:
+            for mapObj in errorMbsWarkerLogger.readeJSONfile(): 
+                errorMbsWarkerLogger.writeErrBuffer(mapObj['date'], mapObj['message'], mapObj['error'])
+
+            errorMbsWarkerLogger.writeErrBuffer(str(datetime.now()), "The device is not responding", "No Communication Error while adjusting time")
+            errorMbsWarkerLogger.wtireErrLogJson() 
+            errorMbsWarkerLogger.clearErrBuffer() 
+
+        # Exception handle: Polling the device until it responds
+        mbsSlave.noComminicationHandler()
+
+        # If the device responds, repeat the operation that resulted in the error to 
+        # ensure further correct operation of the program.
+        mbsSlave.adjustTime(newDateTime)
 
 # Checking the Internet connection
     if not (checkNetConnect()):
@@ -67,7 +95,7 @@ def startTerminal(trainInfoLocal: dict, terminalLocal: dict, months: dict, genPh
     dataSCBbuffer: list = [] # Buffer used to filter out duplicated data
 
 # The name of the JSON Log file where all the information will be saved
-    JSONfile: str = f'{infoMbsDevice["fileName"]}.json'
+    JSONfile: str = "DataLogFile.json" # BY DEFAULT
 
     JSONworkerObj: JSONworker = JSONworker(JSONfile)
 
@@ -82,15 +110,53 @@ def startTerminal(trainInfoLocal: dict, terminalLocal: dict, months: dict, genPh
 
 # Append data in list for defect determination operation
         try:
-            deviceADCdata: list[int] = mbsSlave.getADCData()
+
+            try:
+                deviceADCdata: list[int] = mbsSlave.getADCData()
+            except Exception:
+
+                print(colored(f"\n!!! {exMess["CommunicationErr"]} !!!\n", "red", attrs=["bold"]))
+
+                if errorMbsWarkerLogger.readeJSONfile() == None:
+                    errorMbsWarkerLogger.writeErrBuffer(str(datetime.now()), "The device is not responding", "No Communication Error while while getting ADC data")
+                    errorMbsWarkerLogger.wtireErrLogJson() 
+                    errorMbsWarkerLogger.clearErrBuffer()
+                else:
+                    for mapObj in errorMbsWarkerLogger.readeJSONfile():
+                        errorMbsWarkerLogger.writeErrBuffer(mapObj['date'], mapObj['message'], mapObj['error'])
+                    errorMbsWarkerLogger.writeErrBuffer(str(datetime.now()), "The device is not responding", "No Communication Error while while getting ADC data")
+                    errorMbsWarkerLogger.wtireErrLogJson() 
+                    errorMbsWarkerLogger.clearErrBuffer()
+
+                mbsSlave.noComminicationHandler()
+                deviceADCdata = mbsSlave.getADCData()
+
             statusChecker: int = parasiticConversionChecker(deviceADCdata)
 
             if(statusChecker == 1):
                 sortedList.append(deviceADCdata)
 
             elif(statusChecker != 1):
+                try:
+                    generatedData: list[int] = mbsSlave.getGeneratedData()
+                except Exception:
 
-                generatedData: list[int] = mbsSlave.getGeneratedData()
+                    print(colored(f"\n!!! {exMess["CommunicationErr"]} !!!\n", "red", attrs=["bold"]))
+
+                    if errorMbsWarkerLogger.readeJSONfile() == None:
+                        errorMbsWarkerLogger.writeErrBuffer(str(datetime.now()), "The device is not responding", "No Communication Error while getting Final data")
+                        errorMbsWarkerLogger.wtireErrLogJson() 
+                        errorMbsWarkerLogger.clearErrBuffer()
+                    else:
+                        for mapObj in errorMbsWarkerLogger.readeJSONfile():
+                            errorMbsWarkerLogger.writeErrBuffer(mapObj['date'], mapObj['message'], mapObj['error'])
+
+                        errorMbsWarkerLogger.writeErrBuffer(str(datetime.now()), "The device is not responding", "No Communication Error while getting Final data")
+                        errorMbsWarkerLogger.wtireErrLogJson() 
+                        errorMbsWarkerLogger.clearErrBuffer()
+
+                    mbsSlave.noComminicationHandler()
+                    generatedData = mbsSlave.getGeneratedData()
             
                 if(generatedData != dataSCBbuffer):
 
@@ -103,8 +169,6 @@ def startTerminal(trainInfoLocal: dict, terminalLocal: dict, months: dict, genPh
 
                             JSONworkerObj.writeJSONfile(JSONworker.getDataBuffer()) # 2.Overwrite JSON file with updated data
                             JSONworker.clearBuffer()# 3.Clear the Buffer
-                    
-
                         print(colored(f"** {genPhrases["FreeLine"]} {infoMbsDevice["sensorPoint"]} **\n", "green", attrs=["bold"]))
                     else:
 
@@ -128,5 +192,5 @@ def startTerminal(trainInfoLocal: dict, terminalLocal: dict, months: dict, genPh
 
                     dataSCBbuffer = generatedData
 
-        except FileNotFoundError: 
+        except FileNotFoundError:
             print(colored(f"!!! {exMess["DeviceErr"]} !!!!\n", "red", attrs=["bold"]))
