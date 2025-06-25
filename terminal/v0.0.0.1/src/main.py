@@ -36,9 +36,10 @@ else:
 
     print("\n!!You did not select the language for the Terminal SCB-Sh v0.0.0.1 program, English was set by default!!\n")
 
-def main(TrainInfoLocal: dict, TerminalDialogLocal: dict, Months: dict, GenericPhrases: dict, Defect: dict,  ExceptionMessage: dict):
+def main():
 
-    errDir = f'{os.path.expanduser("~")}/ErrLog'
+    # Create Error-Log catalog
+    errDir = f'{os.path.expanduser("~")}/ErrLog' 
     errFile = f'{errDir}/ErrLogJSON.json'
 
     if Path(errDir).exists() and Path(errDir).is_dir():
@@ -52,10 +53,18 @@ def main(TrainInfoLocal: dict, TerminalDialogLocal: dict, Months: dict, GenericP
         with open(errFile, 'w'):
             print("\n The ErrLog directory and ErrLogJSON.json file were successfully created (PATH: ~/ErrLog/ErrLogJSON.json)\n[ Каталог ErrLog с файлом ErrLogJSON.json были успешно созданы (ПУТЬ: ~/ErrLog/ErrLogJSON.json)]\n")
 
+    # Create Data-Log catalog
+    pathToDataDir = f'{os.path.expanduser("~")}/DataLog'
 
-    startTerminal(TrainInfoLocal, TerminalDialogLocal, Months, GenericPhrases, Defect, ExceptionMessage)
+    if not Path(pathToDataDir).exists() and not Path(pathToDataDir).is_dir():
+        print(f'\nThe data log storage "{pathToDataDir}" directory has been created successfully!\n[Каталог хранения лога данных "{pathToDataDir}" создан успешно!]')
+        os.mkdir(pathToDataDir)
+    else:
+        print(f'\nThe data log directory "{pathToDataDir}" was previously created!\n[Каталог лога данных "{pathToDataDir}" ранее был создан!]')
+
+    startTerminal(TrainInfoLocal, TerminalDialogLocal, Months, GenericPhrases, Defect, ExceptionMessage, pathToDataDir)
     
 
 
 if __name__ == "__main__":
-    main(TrainInfoLocal, TerminalDialogLocal, Months, GenericPhrases, Defect, ExceptionMessage)
+    main()

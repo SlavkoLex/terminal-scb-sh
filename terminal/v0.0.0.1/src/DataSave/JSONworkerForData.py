@@ -27,6 +27,9 @@ class JSONworker:
 
     def getJSONfile(self) -> str:
         return self.__JSONfile
+    
+    def setJSONfile(self, JSONfile):
+        self.__JSONfile = JSONfile
 
     def writeJSONfile(self, dataArr: list[dict]) -> None:
 
@@ -43,9 +46,6 @@ class JSONworker:
             except json.decoder.JSONDecodeError:
                 pass
 
-
     def JSONfileInit(self):
         with open(self.__JSONfile, 'w'):
                 pass
-
-
