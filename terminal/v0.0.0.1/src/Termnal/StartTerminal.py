@@ -102,9 +102,9 @@ def startTerminal(
 
     print(colored(f"\n************ {genPhrases["LineListening"]} '{infoMbsDevice["sensorPoint"]}' ************\n", 'white', attrs=["bold"])) # LOCAL RU EN
 
-    dataSCBbuffer: list = [] # Buffer used to filter out duplicated data
+    dataSCBbuffer: list = [0] * 9 # Buffer used to filter out duplicated data
 
-# Флаг полного прохода вагона (Используется в условии обновления файла логирования данных тем самым сохраняя ровный счет вагонов)
+# The flag of the full passage of the car (Used in the condition of updating the data logging file, thereby maintaining an even count of the cars)
     fullWagonPassageFlag: int = 0
 
 # A pointer to a new date (Needed for updating the data logging file.The format is Year, Month, Day)
@@ -116,7 +116,7 @@ def startTerminal(
     fileCreationDate[:] = str(datetime.now()).split(" ")[0].split("-")
 
 # Creating a data file with a format name "DataLogFile_10_10_2025.json"
-    JSONfile: str = f'{pathToDataDir}/DataLogFile_{"_".join(fileCreationDate)}.json' # BY DEFAULT
+    JSONfile: str = f'{pathToDataDir}/DataLogFile_{"_".join(fileCreationDate)}.json'
 
 
 # The name of the JSON Log file where all the information will be saved
@@ -132,6 +132,15 @@ def startTerminal(
 
 # The array where the filtered data is entered (Cleared of parasitic fluctuations)
     sortedList: list[list[int]] = []
+
+# The primary data received by the ADC from the device
+    deviceADCdata: list[int] = [0] * 20
+
+# The status flag for checking the received ADC result for the presence of a parasitic transformation
+    statusChecker: int = 0
+
+# Array for data received from the device
+    generatedData: list[int] = [0] * 9
 
 #-------------------------------------------------Start----------------------------------------------------
 
@@ -161,7 +170,7 @@ def startTerminal(
         try:
 
             try:
-                deviceADCdata: list[int] = mbsSlave.getADCData()
+                deviceADCdata[:] = mbsSlave.getADCData()
             except Exception:
 
                 print(colored(f"\n!!! {exMess["CommunicationErr"]} !!!\n", "red", attrs=["bold"]))
@@ -178,10 +187,10 @@ def startTerminal(
                     errorMbsWarkerLogger.clearErrBuffer()
 
                 mbsSlave.noComminicationHandler()
-                deviceADCdata = mbsSlave.getADCData()
+                deviceADCdata[:] = mbsSlave.getADCData()
 
             
-            statusChecker: int = parasiticConversionChecker(deviceADCdata)
+            statusChecker = parasiticConversionChecker(deviceADCdata)
 
             if(statusChecker == 1):
                 sortedList.append(deviceADCdata)
@@ -189,7 +198,7 @@ def startTerminal(
             elif(statusChecker != 1):
 
                 try:
-                    generatedData: list[int] = mbsSlave.getGeneratedData()
+                    generatedData[:] = mbsSlave.getGeneratedData()
 
                 except Exception:
 
@@ -209,7 +218,7 @@ def startTerminal(
 
                     mbsSlave.noComminicationHandler()
 
-                    generatedData = mbsSlave.getGeneratedData()
+                    generatedData[:] = mbsSlave.getGeneratedData()
 
             
                 if(generatedData != dataSCBbuffer):
@@ -249,7 +258,6 @@ def startTerminal(
 
                         JSONworker.addDataInBuffer(toSave) # Collecting data for saving in JSON
 
-                    # Перезапись массива с сохранением ссылки
                     dataSCBbuffer[:] = generatedData 
 
         except FileNotFoundError:
